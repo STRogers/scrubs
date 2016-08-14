@@ -114,11 +114,10 @@ def orderStats(regionID):
         
         c.execute("""SELECT 
                 orders.typeId,
-                orders.regionId,
+                regionID,
                 ? as date,
                 aggr.vol,
                 aggr.avg,
-                SUM(price*price),
                 aggr.ct
             FROM orders
             JOIN (
@@ -129,16 +128,16 @@ def orderStats(regionID):
                     COUNT() as ct
                 FROM orders GROUP BY orders.typeId
             ) AS aggr ON aggr.typeId=orders.typeId
-            GROUP BY orders.typeId,orders.regionId;""",(str(timeStamp),))
+            GROUP BY orders.typeId;""",(str(timeStamp),))
         allData = c.fetchall()
         
         c.execute('CREATE TEMP TABLE buyData (typeId INT, buyVol INT, buyMax REAL, buyWAvg REAL, buyVar REAL, buyCount INT);')
         c.execute('CREATE TEMP TABLE sellData (typeId INT, sellVol INT, sellMin REAL, sellWAvg REAL, sellVar REAL, sellCount INT);')
-        c.execute('CREATE TEMP TABLE allData (typeId INT, regionId INT, date TEXT, allVol INT, allWAvg REAL, allVar REAL, allCount INT);')
+        c.execute('CREATE TEMP TABLE allData (typeId INT, regionId INT, date TEXT, allVol INT, allWAvg REAL, allCount INT);')
         
         c.executemany('INSERT INTO buyData VALUES (?,?,?,?,?,?);',buyData)
         c.executemany('INSERT INTO sellData VALUES (?,?,?,?,?,?);',sellData)
-        c.executemany('INSERT INTO allData VALUES (?,?,?,?,?,?,?);',allData)
+        c.executemany('INSERT INTO allData VALUES (?,?,?,?,?,?);',allData)
         
         c.execute("""INSERT INTO History
             SELECT a.typeId, 
@@ -149,7 +148,6 @@ def orderStats(regionID):
                 s.sellVol, 
                 b.buyMax, 
                 s.sellMin,
-                a.allVar,
                 b.buyVar,
                 s.sellVar,
                 a.allWAvg,
