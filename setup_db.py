@@ -12,6 +12,7 @@ def make_project_db():
 					sellVolume	INTEGER,
 					maxBuy	NUMERIC,
 					minSell	NUMERIC,
+					allVariance NUMERIC,
 					buyVariance	NUMERIC,
 					sellVariance	NUMERIC,
 					allAvg	NUMERIC,
