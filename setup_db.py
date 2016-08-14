@@ -34,6 +34,6 @@ def make_project_db():
 					IssuedDate	TEXT NOT NULL,
 					Duration	INTEGER NOT NULL,
 					PRIMARY KEY(Id))""")
-		c.commit()
+		conn.commit()
 if __name__ == '__main__':
 	make_project_db()
