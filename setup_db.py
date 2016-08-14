@@ -1,7 +1,7 @@
 import sqlite3
 
 def make_project_db():
-	with sqlite.connect('project.db') as conn:
+	with sqlite3.connect('project.db') as conn:
 		c = conn.cursor()
 		c.execute("""CREATE TABLE history (
 					typeId	INTEGER NOT NULL,
