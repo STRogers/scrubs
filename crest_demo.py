@@ -1,5 +1,4 @@
 import requests
-import sqlite3
 import datetime
 import MySQLdb as mysql
 
@@ -18,8 +17,11 @@ SQL_USER = config['mysql']['username']
 SQL_PASS = config['mysql']['password']
 
 def test_db_connection():
-    with mysql.connect(host=SQL_ADDR, user=SQL_USER, passwd=SQL_PASS, db=SQL_DB) as conn:
+    try:
+        db = mysql.connect(host=SQL_ADDR, user=SQL_USER, passwd=SQL_PASS, db=SQL_DB)
         return True
+    except:
+        return False
 
 
 def QUERY_ORDERS_BY_ID(orderIDs, db):
