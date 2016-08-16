@@ -19,9 +19,9 @@ SQL_PASS = config['mysql']['password']
 def test_db_connection():
     try:
         db = mysql.connect(host=SQL_ADDR, user=SQL_USER, passwd=SQL_PASS, db=SQL_DB)
-        return True
-    except:
-        return False
+        return 'PASS'
+    except Exception as e:
+        return e
 
 
 def QUERY_ORDERS_BY_ID(orderIDs, db):
@@ -186,5 +186,5 @@ def orderStats(regionID):
                 s.sellCount
             FROM buyData AS b JOIN sellData AS s ON b.typeId=s.typeId AND b.regionId=s.regionId JOIN allData AS a ON b.typeId=a.typeId AND b.regionId=a.regionId;""")
         
-test_db_connection()
+print('DB CONNECTION TEST: {}'.format(test_db_connection())
 updateOrderTable(10000002)
