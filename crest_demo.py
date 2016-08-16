@@ -1,6 +1,25 @@
 import requests
 import sqlite3
 import datetime
+import MySQLdb as mysql
+
+import configparser
+import argparse
+
+parser = argparse.ArgumentParser(description='test config reading')
+parser.add_argument('-c','--config',dest='config_file', action='store', default='defaults.cfg')
+
+args = parser.parse_args()
+config = configparser.ConfigParser()
+config.read(args.config_file)
+SQL_ADDR = config['mysql']['address']
+SQL_DB   = config['mysql']['database']
+SQL_USER = config['mysql']['username']
+SQL_PASS = config['mysql']['password']
+
+def test_db_connection():
+    with mysql.connect(host=SQL_ADDR, user=SQL_USER, passwd=SQL_PASS, db=SQL_DB) as conn:
+        return True
 
 
 def QUERY_ORDERS_BY_ID(orderIDs, db):
@@ -37,33 +56,34 @@ def updateOrderTable(regionID=10000002):
 
     orderIDs = set()
 
-    with sqlite3.connect('project.db') as conn:
-        c = conn.cursor()
-        c.execute('DELETE FROM orders;')
+    db = mysql.connect(host=SQL_ADDR, user=SQL_USER, passwd=SQL_PASS, db=SQL_DB)
+    c = db.cursor()
+    c.execute('DELETE FROM orders;')
 
-        for order in orders:
-            TypeId = order['type']
-            RegionId = regionID
-            StationID = order['stationID']
-            Id = order['id']
-            VolumeEntered = order['volumeEntered']
-            Volume = order['volume']
-            minVolume = order['minVolume']
-            buy = 1 if bool(order['buy']) else 0
-            Price = order['price']
-            IssuedDate = order['issued']
-            duration = order['duration']
+    for order in orders:
+        TypeId = order['type']
+        RegionId = regionID
+        StationID = order['stationID']
+        Id = order['id']
+        VolumeEntered = order['volumeEntered']
+        Volume = order['volume']
+        minVolume = order['minVolume']
+        buy = 1 if bool(order['buy']) else 0
+        Price = order['price']
+        IssuedDate = order['issued']
+        duration = order['duration']
 
-            if Id in orderIDs:
-                continue
-            else:
-                orderIDs.add(Id)
-            
-            orderRecord = TypeId,RegionId,StationID,Id,VolumeEntered,Volume,minVolume,buy,Price,IssuedDate,duration
-            
-            c.execute('INSERT INTO orders VALUES (?,?,?,?,?,?,?,?,?,?,?);',orderRecord)
-            
-        conn.commit()
+        if Id in orderIDs:
+            continue
+        else:
+            orderIDs.add(Id)
+        
+        orderRecord = TypeId,RegionId,StationID,Id,VolumeEntered,Volume,minVolume,buy,Price,IssuedDate,duration
+        
+        c.execute('INSERT INTO orders VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s);',orderRecord)
+        
+    db.commit()
+    db.close()
         
     return datetime.datetime.now()
         
@@ -76,6 +96,7 @@ def orderStats(regionID):
         # Volume
         c.execute("""SELECT 
                 orders.typeId,
+                orders.regionId,
                 aggr.vol,
                 MAX(price),
                 aggr.avg,
@@ -95,6 +116,7 @@ def orderStats(regionID):
         
         c.execute("""SELECT 
                 orders.typeId,
+                orders.regionId,
                 aggr.vol,
                 MAX(price),
                 aggr.avg,
@@ -118,12 +140,14 @@ def orderStats(regionID):
                 ? as date,
                 aggr.vol,
                 aggr.avg,
-                SUM(price*price),
+                0,
                 aggr.ct
             FROM orders
             JOIN (
                 SELECT 
                     orders.typeId,
+                    orders.price as p1,
+                    orders.price as p2,
                     SUM(volume) as vol,
                     SUM(price*volume)/SUM(volume) as avg,
                     COUNT() as ct
@@ -132,12 +156,12 @@ def orderStats(regionID):
             GROUP BY orders.typeId,orders.regionId;""",(str(timeStamp),))
         allData = c.fetchall()
         
-        c.execute('CREATE TEMP TABLE buyData (typeId INT, buyVol INT, buyMax REAL, buyWAvg REAL, buyVar REAL, buyCount INT);')
-        c.execute('CREATE TEMP TABLE sellData (typeId INT, sellVol INT, sellMin REAL, sellWAvg REAL, sellVar REAL, sellCount INT);')
+        c.execute('CREATE TEMP TABLE buyData (typeId INT, regionId INT, buyVol INT, buyMax REAL, buyWAvg REAL, buyVar REAL, buyCount INT);')
+        c.execute('CREATE TEMP TABLE sellData (typeId INT, regionId INT, sellVol INT, sellMin REAL, sellWAvg REAL, sellVar REAL, sellCount INT);')
         c.execute('CREATE TEMP TABLE allData (typeId INT, regionId INT, date TEXT, allVol INT, allWAvg REAL, allVar REAL, allCount INT);')
         
-        c.executemany('INSERT INTO buyData VALUES (?,?,?,?,?,?);',buyData)
-        c.executemany('INSERT INTO sellData VALUES (?,?,?,?,?,?);',sellData)
+        c.executemany('INSERT INTO buyData VALUES (?,?,?,?,?,?,?);',buyData)
+        c.executemany('INSERT INTO sellData VALUES (?,?,?,?,?,?,?);',sellData)
         c.executemany('INSERT INTO allData VALUES (?,?,?,?,?,?,?);',allData)
         
         c.execute("""INSERT INTO History
@@ -158,9 +182,7 @@ def orderStats(regionID):
                 a.allCount,
                 b.buyCount,
                 s.sellCount
-            FROM buyData AS b JOIN sellData AS s ON b.typeId=s.typeId JOIN allData AS a ON b.typeId=a.typeId;""")
+            FROM buyData AS b JOIN sellData AS s ON b.typeId=s.typeId AND b.regionId=s.regionId JOIN allData AS a ON b.typeId=a.typeId AND b.regionId=a.regionId;""")
         
-
-orderStats(10000002)
-
-# SUM(((price-SUM(price*volume)/SUM(volume))*(price-SUM(price*volume)/SUM(volume))))/(SUM(volume)-1),
+test_db_connection()
+updateOrderTable(10000002)
