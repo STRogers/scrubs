@@ -186,5 +186,5 @@ def orderStats(regionID):
                 s.sellCount
             FROM buyData AS b JOIN sellData AS s ON b.typeId=s.typeId AND b.regionId=s.regionId JOIN allData AS a ON b.typeId=a.typeId AND b.regionId=a.regionId;""")
         
-print('DB CONNECTION TEST: {}'.format(test_db_connection())
+print('DB CONNECTION TEST: {}'.format(test_db_connection()))
 updateOrderTable(10000002)
