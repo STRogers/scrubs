@@ -15,7 +15,7 @@ SQL_ADDR = config['mysql']['address']
 SQL_DB   = config['mysql']['database']
 SQL_USER = config['mysql']['username']
 SQL_PASS = config['mysql']['password']
-
+print(SQL_ADDR,SQL_DB,SQL_USER,SQL_PASS)
 def test_db_connection():
     try:
         db = mysql.connect(host=SQL_ADDR, user=SQL_USER, passwd=SQL_PASS, db=SQL_DB)
