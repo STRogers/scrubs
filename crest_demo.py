@@ -4,6 +4,7 @@ import MySQLdb as mysql
 
 import configparser
 import argparse
+import time
 
 parser = argparse.ArgumentParser(description='test config reading')
 parser.add_argument('-c','--config',dest='config_file', action='store', default='defaults.cfg')
@@ -15,7 +16,7 @@ SQL_ADDR = config['mysql']['address']
 SQL_DB   = config['mysql']['database']
 SQL_USER = config['mysql']['username']
 SQL_PASS = config['mysql']['password']
-print(SQL_ADDR,SQL_DB,SQL_USER,SQL_PASS)
+
 def test_db_connection():
     try:
         db = mysql.connect(host=SQL_ADDR, user=SQL_USER, passwd=SQL_PASS, db=SQL_DB)
@@ -87,104 +88,22 @@ def updateOrderTable(regionID=10000002):
     db.commit()
     db.close()
         
-    return datetime.datetime.now()
+    return time.time()
         
 def orderStats(regionID):
     '''Calculate stats on current orders'''
-    timeStamp = updateOrderTable(regionID)
-    with sqlite3.connect('project.db') as conn:
-        c = conn.cursor()
-        
-        # Volume
-        c.execute("""SELECT 
-                orders.typeId,
-                orders.regionId,
-                aggr.vol,
-                MAX(price),
-                aggr.avg,
-                SUM((price-aggr.avg)*(price-aggr.avg))/(aggr.ct-1),
-                aggr.ct
-            FROM orders
-            JOIN (
-                SELECT 
-                    orders.typeId,
-                    SUM(volume) as vol,
-                    SUM(price*volume)/SUM(volume) as avg,
-                    COUNT() as ct
-                FROM orders WHERE buy=1 GROUP BY orders.typeId
-            ) AS aggr ON aggr.typeId=orders.typeId
-            WHERE buy=1 GROUP BY orders.typeId;""")
-        buyData = c.fetchall()
-        
-        c.execute("""SELECT 
-                orders.typeId,
-                orders.regionId,
-                aggr.vol,
-                MAX(price),
-                aggr.avg,
-                SUM((price-aggr.avg)*(price-aggr.avg))/(aggr.ct-1),
-                aggr.ct
-            FROM orders
-            JOIN (
-                SELECT 
-                    orders.typeId,
-                    SUM(volume) as vol,
-                    SUM(price*volume)/SUM(volume) as avg,
-                    COUNT() as ct
-                FROM orders WHERE buy=0 GROUP BY orders.typeId
-            ) AS aggr ON aggr.typeId=orders.typeId
-            WHERE buy=0 GROUP BY orders.typeId;""")
-        sellData = c.fetchall()
-        
-        c.execute("""SELECT 
-                orders.typeId,
-                orders.regionId,
-                ? as date,
-                aggr.vol,
-                aggr.avg,
-                0,
-                aggr.ct
-            FROM orders
-            JOIN (
-                SELECT 
-                    orders.typeId,
-                    orders.price as p1,
-                    orders.price as p2,
-                    SUM(volume) as vol,
-                    SUM(price*volume)/SUM(volume) as avg,
-                    COUNT() as ct
-                FROM orders GROUP BY orders.typeId
-            ) AS aggr ON aggr.typeId=orders.typeId
-            GROUP BY orders.typeId,orders.regionId;""",(str(timeStamp),))
-        allData = c.fetchall()
-        
-        c.execute('CREATE TEMP TABLE buyData (typeId INT, regionId INT, buyVol INT, buyMax REAL, buyWAvg REAL, buyVar REAL, buyCount INT);')
-        c.execute('CREATE TEMP TABLE sellData (typeId INT, regionId INT, sellVol INT, sellMin REAL, sellWAvg REAL, sellVar REAL, sellCount INT);')
-        c.execute('CREATE TEMP TABLE allData (typeId INT, regionId INT, date TEXT, allVol INT, allWAvg REAL, allVar REAL, allCount INT);')
-        
-        c.executemany('INSERT INTO buyData VALUES (?,?,?,?,?,?,?);',buyData)
-        c.executemany('INSERT INTO sellData VALUES (?,?,?,?,?,?,?);',sellData)
-        c.executemany('INSERT INTO allData VALUES (?,?,?,?,?,?,?);',allData)
-        
-        c.execute("""INSERT INTO History
-            SELECT a.typeId, 
-                a.regionId,
-                a.date, 
-                a.allVol, 
-                b.buyVol,
-                s.sellVol, 
-                b.buyMax, 
-                s.sellMin,
-                a.allVar,
-                b.buyVar,
-                s.sellVar,
-                a.allWAvg,
-                b.buyWAvg, 
-                s.sellWAvg,
-                a.allCount,
-                b.buyCount,
-                s.sellCount
-            FROM buyData AS b JOIN sellData AS s ON b.typeId=s.typeId AND b.regionId=s.regionId JOIN allData AS a ON b.typeId=a.typeId AND b.regionId=a.regionId;""")
-        
+    time_stamp = updateOrderTable(regionID)
+
+    db = mysql.connect(host=SQL_ADDR, user=SQL_USER, passwd=SQL_PASS, db=SQL_DB)
+    c = db.cursor()
+    print('inserting history')
+    with open('history_frame_insert.sql','r') as query_file:
+        query = query_file.read()
+        c.execute(query,(time_stamp,))
+
+    db.commit()
+    db.close()
+
+
 print('DB CONNECTION TEST: {}'.format(test_db_connection()))
-updateOrderTable(10000002)
+orderStats(10000002)
