@@ -70,22 +70,30 @@ def test_db_connection():
 def test_crest_online():
     # This doesn't seem like a good way to check if crest is down, oh well.
     href = 'https://crest-tq.eveonline.com/regions/'
-    r = requests.get(href)
-    if 'items' in r.json():
-        return True
-    else:
+    try:
+        r = requests.get(href)
+        if 'items' in r.json():
+            return True
+        else:
+            raise CRESTOfflineException('Error with EVE-CREST')
+    except requests.HTTPError as e:
         raise CRESTOfflineException('Error with EVE-CREST')
+
 
 
 def getpages(href):
     '''Recursively get CREST page items.'''
-    json = requests.get(href).json()
-    items = json['items']
-    if 'next' in json:
-        next_page = json['next']['href']
-        items += getpages(next_page)
+    try:
+        json = requests.get(href).json()
+        items = json['items']
+        if 'next' in json:
+            next_page = json['next']['href']
+            items += getpages(next_page)
+        return items
+    except requests.HTTPError as e:
+        raise CRESTOfflineException('Error with EVE-CREST')
     
-    return items
+    
 
 def get_market_order_json(regions):
     test_crest_online()
@@ -123,7 +131,11 @@ class MarketScanner():
 
             logging.info('Update completed successfully.')
             time_to_sleep = min(timestamp+self.poll_freq-time.time(),self.poll_freq)
+            logging.info('Processing orders and history frame took {} seconds.'.format(int(time.time()-timestamp)))
+            time_to_sleep = max(time_to_sleep,0) # ensure no negative wait.
+
             logging.info('Next market query in {} seconds.'.format(int(time_to_sleep)))
+            
             time.sleep(time_to_sleep)
 
     def update_orders(self, regions):
