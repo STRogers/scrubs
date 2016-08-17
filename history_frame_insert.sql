@@ -6,13 +6,13 @@ INSERT INTO history SELECT
     allOrders.all_volume,
     buys.buy_volume,
     sells.sell_volume,
-    buys.max_buy,
-    sells.min_sell,
-    buys.buy_std_dev,
-    sells.sell_std_dev,
-    allOrders.all_wavg,
-    buys.buy_wavg,
-    sells.sell_wavg,
+    CAST(buys.max_buy as DECIMAL(15,4)),
+    CAST(sells.min_sell as DECIMAL(15,4)),
+    CAST(buys.buy_std_dev as DECIMAL(15,4)),
+    CAST(sells.sell_std_dev as DECIMAL(15,4)),
+    CAST(allOrders.all_wavg as DECIMAL(15,4)),
+    CAST(buys.buy_wavg as DECIMAL(15,4)),
+    CAST(sells.sell_wavg as DECIMAL(15,4)),
     allOrders.all_count,
     buys.buy_count,
     sells.sell_count
@@ -52,4 +52,7 @@ JOIN (
         COUNT(*) as all_count
     FROM orders as o
     GROUP BY o.type_id,o.region_id,o.station_id
-) as allOrders ON allOrders.type_id=buys.type_id AND allOrders.region_id=buys.region_id AND allOrders.station_id=buys.station_id;
+) as allOrders ON 
+    allOrders.type_id=buys.type_id 
+    AND allOrders.region_id=buys.region_id 
+    AND allOrders.station_id=buys.station_id WHERE buys.region_id=%s;
