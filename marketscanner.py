@@ -122,6 +122,7 @@ class MarketScanner():
         self.poll_freq = poll_freq
     def run(self):
         while True:
+            timestamp = time.time()
             try:
                 timestamp = self.order_stats()
                 
