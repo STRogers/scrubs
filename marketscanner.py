@@ -125,8 +125,8 @@ class MarketScanner():
             try:
                 timestamp = self.order_stats()
                 
-            except CRESTOfflineException:
-                pass # crest is down, wait till next polling cycle to try again.
+            except:
+                # crest is down, wait till next polling cycle to try again.
                 logging.info('CREST Error, waiting until next polling cycle to try again.')
 
             logging.info('Update completed successfully.')
